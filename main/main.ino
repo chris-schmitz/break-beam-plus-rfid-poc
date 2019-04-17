@@ -8,14 +8,21 @@
 #define break_beam_left 10
 #define break_beam_right 11
 
-#define break_beam_top 11
+#define break_beam_top 12
 
-#define led_left 15
-#define led_right 16
+#define led_left 16
+#define led_right 17
 
-#define speaker A0
+#define speaker A4
+
+String bulbasaur = " 04 60 d0 4a e6 4c 81";
+String charmander = " 04 78 d2 4a e6 4c 81";
+String squirtle = " 04 59 d0 4a e6 4c 81";
+String pikachu = " 04 60 d1 4a e6 4c 81";
 
 MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance
+
+String content;
 
 int beamStateLeft = 0;
 int beamStateRight = 0;
@@ -25,18 +32,37 @@ const int melody1_size = 5;
 int melody1[melody1_size] = {
     NOTE_C3, NOTE_D3, NOTE_E3, NOTE_F3, NOTE_G3};
 int melody1_durations[melody1_size] = {
-    4, 4, 4, 4, 2};
+    8, 8, 8, 8, 2};
 
 const int melody2_size = 5;
 int melody2[melody2_size] = {NOTE_G3, NOTE_F3, NOTE_E3, NOTE_D3, NOTE_C3};
 int melody2_durations[melody2_size] = {
-    4, 4, 4, 4, 2};
+    8, 8, 8, 8, 2};
+
+void playMelody(int melodyNumber);
+
+void ready()
+{
+    // * ready
+    digitalWrite(led_left, HIGH);
+    digitalWrite(led_right, HIGH);
+    delay(100);
+    digitalWrite(led_left, LOW);
+    digitalWrite(led_right, LOW);
+    delay(100);
+    digitalWrite(led_left, HIGH);
+    digitalWrite(led_right, HIGH);
+    delay(100);
+    digitalWrite(led_left, LOW);
+    digitalWrite(led_right, LOW);
+    delay(100);
+}
 
 void setup()
 {
     Serial.begin(9600);
-    while (!Serial)
-        ;
+    // while (!Serial)
+    //     ;
     Serial.println("Starting up");
     SPI.begin();
     mfrc522.PCD_Init();
@@ -51,6 +77,9 @@ void setup()
 
     pinMode(led_left, OUTPUT);
     pinMode(led_right, OUTPUT);
+
+    ready();
+    playMelody(1);
 }
 
 void loop()
@@ -58,12 +87,19 @@ void loop()
 
     beamStateLeft = digitalRead(break_beam_left);
     beamStateRight = digitalRead(break_beam_right);
-    beamStateTop = digitalRead(break_beam_right);
+    beamStateTop = digitalRead(break_beam_top);
 
-    // * if the top beam is broken it means we're restarting the experience
+    // Serial.println("===================");
+    // Serial.println(beamStateLeft);
+    // Serial.println(beamStateRight);
+    // Serial.println(beamStateTop);
+    // Serial.println("===================");
+
+    // * if the top beam is broken it means we're restarting te         experience
     if (!beamStateTop)
     {
         reset();
+        Serial.println("Top is broken");
     }
 
     if (!beamStateLeft)
@@ -71,6 +107,7 @@ void loop()
         Serial.println("Beam 1 broken");
         digitalWrite(led_left, HIGH);
     }
+
     if (!beamStateRight)
     {
         Serial.println("Beam 2 broken");
@@ -89,8 +126,23 @@ void loop()
         return;
     }
 
-    // Dump debug info about the card; PICC_HaltA() is automatically called
-    mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
+    String uid = captureUID();
+
+    // Serial.println("captured UID:");
+    // Serial.println(uid);
+
+    if (uid == charmander)
+    {
+        playMelody(1);
+    }
+    else if (uid == bulbasaur)
+    {
+
+        playMelody(2);
+    }
+
+    // // Dump debug info about the card; PICC_HaltA() is automatically called
+    // mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
 }
 
 void reset()
@@ -101,7 +153,7 @@ void reset()
 
 void playMelody(int melodyNumber)
 {
-
+    Serial.println("Playing tone");
     int *notes;
     int *durations;
     int arraySize;
@@ -128,4 +180,25 @@ void playMelody(int melodyNumber)
         delay(pauseBetweenNotes);
         noTone(speaker);
     }
+}
+
+/**
+ *
+ */
+
+String captureUID()
+{
+    content = "";
+    for (byte i = 0; i < mfrc522.uid.size; i++)
+    {
+        // Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+        // Serial.print(mfrc522.uid.uidByte[i], HEX);
+        // Serial.println();
+
+        content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " "));
+        content.concat(String(mfrc522.uid.uidByte[i], HEX));
+    }
+    // Serial.println("Content:");
+    // Serial.println(content);
+    return content;
 }
