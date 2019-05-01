@@ -72,6 +72,8 @@ static const uint8_t PROGMEM
             B01100110,
             B00111100};
 
+// uint8_t activeSlot[] PROGMEM = {slot_1_bmp, slot_2_bmp, slot_3_bmp, slot_4_bmp, slot_5_bmp};
+
 MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance
 Adafruit_BicolorMatrix matrix = Adafruit_BicolorMatrix();
 
@@ -114,7 +116,7 @@ void setup()
     // playMelody(1);
 }
 
-const uint8_t *const activeSlot[8];
+int activeIndex;
 
 void loop()
 {
@@ -127,23 +129,23 @@ void loop()
 
     if (!breakBeamState_ONE)
     {
-        activeSlot = &slot_1_bmp;
+        activeIndex = 0;
     }
     else if (!breakBeamState_TWO)
     {
-        activeSlot = &slot_2_bmp;
+        activeIndex = 1;
     }
     else if (!breakBeamState_THREE)
     {
-        activeSlot = &slot_3_bmp;
+        activeIndex = 2;
     }
     else if (!breakBeamState_FOUR)
     {
-        activeSlot = &slot_4_bmp;
+        activeIndex = 3;
     }
     else if (!breakBeamState_FIVE)
     {
-        activeSlot = &slot_5_bmp;
+        activeIndex = 4;
     }
 
     if (!breakBeamState_ONE || !breakBeamState_TWO || !breakBeamState_THREE || !breakBeamState_FOUR || !breakBeamState_FIVE)
@@ -174,20 +176,26 @@ void loop()
     Serial.println("captured UID:");
     Serial.println(uid);
 
-    if (uid == charmander)
-    {
+    // if (uid == charmander)
+    // {
 
-        matrix.drawBitmap(0, 0, *activeSlot, 8, 8, LED_RED);
-        // playMelody(1);
-    }
-    else if (uid == bulbasaur)
+    //     matrix.drawBitmap(0, 0, &activeSlot[activeIndex], 8, 8, LED_RED);
+    //     // playMelody(1);
+    // }
+    // else if (uid == bulbasaur)
+    // {
+    //     matrix.drawBitmap(0, 0, &activeSlot[activeIndex], 8, 8, LED_GREEN);
+    //     // playMelody(2);
+    // }
+    // else if (uid == pikachu)
+    // {
+    //     matrix.drawBitmap(0, 0, &activeSlot[activeIndex], 8, 8, LED_YELLOW);
+    //     // playMelody(2);
+    // }
+    if (uid == pikachu)
     {
-        matrix.drawBitmap(0, 0, *activeSlot, 8, 8, LED_GREEN);
-        // playMelody(2);
-    }
-    else if (uid == pikachu)
-    {
-        matrix.drawBitmap(0, 0, *activeSlot, 8, 8, LED_YELLOW);
+        const uint8_t *item[] = {slot_1_bmp};
+        matrix.drawBitmap(0, 0, *item[0], 8, 8, LED_YELLOW);
         // playMelody(2);
     }
 
