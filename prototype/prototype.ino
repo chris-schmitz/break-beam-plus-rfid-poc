@@ -72,7 +72,7 @@ static const uint8_t PROGMEM
             B01100110,
             B00111100};
 
-// uint8_t activeSlot[] PROGMEM = {slot_1_bmp, slot_2_bmp, slot_3_bmp, slot_4_bmp, slot_5_bmp};
+const uint8_t *activeSlot[] PROGMEM = {slot_1_bmp, slot_2_bmp, slot_3_bmp, slot_4_bmp, slot_5_bmp};
 
 MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance
 Adafruit_BicolorMatrix matrix = Adafruit_BicolorMatrix();
@@ -87,6 +87,10 @@ int breakBeamState_FIVE = 0;
 
 void setup()
 {
+    matrix.begin(0x70);
+    matrix.clear();
+    matrix.writeDisplay();
+
     Serial.begin(115200);
     while (!Serial)
         ;
@@ -109,8 +113,6 @@ void setup()
 
     pinMode(break_beam_FIVE, INPUT);
     digitalWrite(break_beam_FIVE, HIGH);
-
-    matrix.begin(0x70);
 
     // ready();
     // playMelody(1);
@@ -176,28 +178,24 @@ void loop()
     Serial.println("captured UID:");
     Serial.println(uid);
 
-    // if (uid == charmander)
-    // {
-
-    //     matrix.drawBitmap(0, 0, &activeSlot[activeIndex], 8, 8, LED_RED);
-    //     // playMelody(1);
-    // }
-    // else if (uid == bulbasaur)
-    // {
-    //     matrix.drawBitmap(0, 0, &activeSlot[activeIndex], 8, 8, LED_GREEN);
-    //     // playMelody(2);
-    // }
-    // else if (uid == pikachu)
-    // {
-    //     matrix.drawBitmap(0, 0, &activeSlot[activeIndex], 8, 8, LED_YELLOW);
-    //     // playMelody(2);
-    // }
-    if (uid == pikachu)
+    matrix.clear();
+    if (uid == charmander)
     {
-        const uint8_t *item[] = {slot_1_bmp};
-        matrix.drawBitmap(0, 0, *item[0], 8, 8, LED_YELLOW);
+
+        matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_RED);
+        // playMelody(1);
+    }
+    else if (uid == bulbasaur)
+    {
+        matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_GREEN);
         // playMelody(2);
     }
+    else if (uid == pikachu)
+    {
+        matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_YELLOW);
+        // playMelody(2);
+    }
+    matrix.writeDisplay();
 
     // Dump debug info about the card; PICC_HaltA() is automatically called
     mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
