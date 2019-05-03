@@ -7,6 +7,7 @@
 #define SS_PIN 13
 #define RST_PIN 12
 
+#define break_beam_ZERO 14
 #define break_beam_ONE 11
 #define break_beam_TWO 10
 #define break_beam_THREE 9
@@ -21,6 +22,16 @@ String squirtle = " 04 59 d0 4a e6 4c 81";
 String pikachu = " 04 60 d1 4a e6 4c 81";
 
 static const uint8_t PROGMEM
+    all_bmp[] =
+        {
+            B11111111,
+            B11111111,
+            B11111111,
+            B11111111,
+            B11111111,
+            B11111111,
+            B11111111,
+            B11111111},
     slot_1_bmp[] =
         {
             B00000000,
@@ -79,25 +90,36 @@ Adafruit_BicolorMatrix matrix = Adafruit_BicolorMatrix();
 
 String content;
 
-int breakBeamState_ONE = 0;
-int breakBeamState_TWO = 0;
-int breakBeamState_THREE = 0;
-int breakBeamState_FOUR = 0;
-int breakBeamState_FIVE = 0;
+int breakBeamState_ZERO;
+int breakBeamState_ONE;
+int breakBeamState_TWO;
+int breakBeamState_THREE;
+int breakBeamState_FOUR;
+int breakBeamState_FIVE;
 
 void setup()
 {
+
+    resetBreakBeamState();
+
     matrix.begin(0x70);
+    matrix.setRotation(3);
+
     matrix.clear();
+    matrix.drawBitmap(0, 0, all_bmp, 8, 8, LED_GREEN);
     matrix.writeDisplay();
+    delay(500);
 
     Serial.begin(115200);
-    while (!Serial)
-        ;
+    // while (!Serial)
+    //     ;
     Serial.println("Starting up");
     SPI.begin();
     mfrc522.PCD_Init();
     mfrc522.PCD_DumpVersionToSerial();
+
+    pinMode(break_beam_ZERO, INPUT);
+    digitalWrite(break_beam_ZERO, HIGH);
 
     pinMode(break_beam_ONE, INPUT);
     digitalWrite(break_beam_ONE, HIGH);
@@ -123,11 +145,17 @@ int activeIndex;
 void loop()
 {
 
+    breakBeamState_ZERO = digitalRead(break_beam_ZERO);
     breakBeamState_ONE = digitalRead(break_beam_ONE);
     breakBeamState_TWO = digitalRead(break_beam_TWO);
     breakBeamState_THREE = digitalRead(break_beam_THREE);
     breakBeamState_FOUR = digitalRead(break_beam_FOUR);
     breakBeamState_FIVE = digitalRead(break_beam_FIVE);
+
+    if (!breakBeamState_ZERO)
+    {
+        resetState();
+    }
 
     if (!breakBeamState_ONE)
     {
@@ -150,9 +178,10 @@ void loop()
         activeIndex = 4;
     }
 
-    if (!breakBeamState_ONE || !breakBeamState_TWO || !breakBeamState_THREE || !breakBeamState_FOUR || !breakBeamState_FIVE)
+    if (!breakBeamState_ZERO || !breakBeamState_ONE || !breakBeamState_TWO || !breakBeamState_THREE || !breakBeamState_FOUR || !breakBeamState_FIVE)
     {
         Serial.println("===================");
+        Serial.println(breakBeamState_ZERO);
         Serial.println(breakBeamState_ONE);
         Serial.println(breakBeamState_TWO);
         Serial.println(breakBeamState_THREE);
@@ -181,17 +210,19 @@ void loop()
     matrix.clear();
     if (uid == charmander)
     {
-
+        Serial.println("Drawing red!");
         matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_RED);
         // playMelody(1);
     }
     else if (uid == bulbasaur)
     {
+        Serial.println("Drawing green!");
         matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_GREEN);
         // playMelody(2);
     }
     else if (uid == pikachu)
     {
+        Serial.println("Drawing yellow!");
         matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_YELLOW);
         // playMelody(2);
     }
@@ -216,4 +247,22 @@ String captureUID()
     // Serial.println("Content:");
     // Serial.println(content);
     return content;
+}
+
+void resetState()
+{
+    matrix.clear();
+    matrix.writeDisplay();
+
+    resetBreakBeamState();
+}
+
+void resetBreakBeamState()
+{
+    breakBeamState_ZERO = 1;
+    breakBeamState_ONE = 1;
+    breakBeamState_TWO = 1;
+    breakBeamState_THREE = 1;
+    breakBeamState_FOUR = 1;
+    breakBeamState_FIVE = 1;
 }
