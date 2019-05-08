@@ -16,6 +16,9 @@
 
 // #define speaker A4
 
+String cupcake = " 04 aa cb 4a e6 4c 80";
+String diamond = " 04 a5 e1 4a e6 4c 80";
+
 String bulbasaur = " 04 60 d0 4a e6 4c 81";
 String charmander = " 04 78 d2 4a e6 4c 81";
 String squirtle = " 04 59 d0 4a e6 4c 81";
@@ -154,6 +157,7 @@ void loop()
 
     if (!breakBeamState_ZERO)
     {
+        Serial.println("Resetting state");
         resetState();
     }
 
@@ -177,6 +181,8 @@ void loop()
     {
         activeIndex = 4;
     }
+    Serial.print("Active index: ");
+    Serial.println(activeIndex);
 
     if (!breakBeamState_ZERO || !breakBeamState_ONE || !breakBeamState_TWO || !breakBeamState_THREE || !breakBeamState_FOUR || !breakBeamState_FIVE)
     {
@@ -204,17 +210,19 @@ void loop()
 
     String uid = captureUID();
 
-    Serial.println("captured UID:");
-    Serial.println(uid);
+    // Serial.println("captured UID:");
+    // Serial.println(uid);
 
     matrix.clear();
-    if (uid == charmander)
+    if (uid == diamond)
+    // if (uid == charmander)
     {
         Serial.println("Drawing red!");
         matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_RED);
         // playMelody(1);
     }
-    else if (uid == bulbasaur)
+    else if (uid == cupcake)
+    // else if (uid == bulbasaur)
     {
         Serial.println("Drawing green!");
         matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_GREEN);
@@ -229,7 +237,7 @@ void loop()
     matrix.writeDisplay();
 
     // Dump debug info about the card; PICC_HaltA() is automatically called
-    mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
+    // mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
 }
 
 String captureUID()
