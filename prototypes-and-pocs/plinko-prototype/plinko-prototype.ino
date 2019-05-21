@@ -3,6 +3,7 @@
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
 #include "pitches.h"
+#include <Wire.h>
 
 #define SS_PIN 13
 #define RST_PIN 12
@@ -15,6 +16,16 @@
 #define break_beam_FIVE 5
 
 #define speaker A2
+
+#define PEG_CONTROLLER_ID 8
+
+enum gameStates
+{
+    IDLE = 0,
+    START,
+    PROCESSING,
+    COMPLETE
+};
 
 String cupcake = " 04 aa cb 4a e6 4c 80";
 String diamond = " 04 a5 e1 4a e6 4c 80";
@@ -119,6 +130,9 @@ volatile int breakBeamState_FIVE = 1;
 
 void setup()
 {
+    Wire.begin();
+
+    messagePegs(IDLE);
 
     resetBreakBeamState();
 
@@ -131,8 +145,8 @@ void setup()
     delay(500);
 
     Serial.begin(115200);
-    while (!Serial)
-        ;
+    // while (!Serial)
+    //     ;
     Serial.println("Starting up");
     SPI.begin();
     mfrc522.PCD_Init();
@@ -225,6 +239,14 @@ void playCompletion()
     }
 }
 
+void messagePegs(gameStates state)
+{
+    Serial.print("sending game state");
+    Wire.beginTransmission(PEG_CONTROLLER_ID);
+    Wire.write(state);
+    Wire.endTransmission();
+}
+
 int activeIndex;
 
 void loop()
@@ -236,6 +258,7 @@ void loop()
     {
         Serial.println("Resetting state");
         resetState();
+        messagePegs(START);
         // playReady();
     }
 
@@ -292,6 +315,8 @@ void loop()
         return;
     }
 
+    messagePegs(PROCESSING);
+
     String uid = captureUID();
 
     Serial.println("captured UID:");
@@ -318,6 +343,17 @@ void loop()
     }
     matrix.writeDisplay();
 
+    // ! adding this artificial delay to represent the time between Reading
+    // ! the RFID tag and the receipt printer finishing its print.
+    delay(3000);
+    messagePegs(COMPLETE);
+
+    // ! adding this artificial delay to represent the time between Reading
+    // ! the RFID tag and the receipt printer finishing its print.
+    delay(3000);
+    messagePegs(IDLE);
+
+    // * leaving this in during dev for easy troubleshooting
     // Dump debug info about the card; PICC_HaltA() is automatically called
     // mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
 }

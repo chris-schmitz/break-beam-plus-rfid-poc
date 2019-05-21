@@ -29,7 +29,7 @@ void setup()
     strip.show();
 
     // while (!Serial)
-    // { // needed to keep leonardo/micro from starting too fast!
+    // {
     //     delay(10);
     // }
 
