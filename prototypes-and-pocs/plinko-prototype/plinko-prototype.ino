@@ -1,3 +1,8 @@
+/**
+ * | Holy cow this needs to be cleaned up and abstracted, if not in this prototype DEFINITELY
+ * | in the final version!
+ **/
+
 #include <MFRC522.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
@@ -12,7 +17,7 @@
 #define break_beam_ONE 11
 #define break_beam_TWO 10
 #define break_beam_THREE 9
-#define break_beam_FOUR 6
+#define break_beam_FOUR 18
 #define break_beam_FIVE 5
 
 #define speaker A2
@@ -24,7 +29,12 @@ enum gameStates
     IDLE = 0,
     START,
     PROCESSING,
-    COMPLETE
+    COMPLETE,
+    GATE_1,
+    GATE_2,
+    GATE_3,
+    GATE_4,
+    GATE_5
 };
 
 String cupcake = " 04 aa cb 4a e6 4c 80";
@@ -38,15 +48,14 @@ String pikachu = " 04 60 d1 4a e6 4c 81";
 
 int idleMelody[] = {
     NOTE_C3, NOTE_D3, NOTE_E3, NOTE_F3, NOTE_G3};
-
+int idleDurations[] = {
+    4, 4, 4, 4, 1};
 int readyMelody[] = {
     NOTE_C3, NOTE_G3};
 
 int completionMelody[] = {
     NOTE_G3, NOTE_C3, NOTE_G3};
 
-int idleDurations[] = {
-    4, 4, 4, 4, 1};
 int readyDurations[] = {
     4, 4};
 int completionDurations[] = {
@@ -241,7 +250,9 @@ void playCompletion()
 
 void messagePegs(gameStates state)
 {
-    Serial.print("sending game state");
+    Serial.print("Messaging pegs with enum:");
+    Serial.println(state);
+
     Wire.beginTransmission(PEG_CONTROLLER_ID);
     Wire.write(state);
     Wire.endTransmission();
@@ -251,69 +262,106 @@ int activeIndex;
 
 void loop()
 {
-    // Serial.println("at top of loop");
-    // delay(100);
-    // return;
+    if (!breakBeamState_ZERO || !breakBeamState_ONE || !breakBeamState_TWO || !breakBeamState_THREE || !breakBeamState_FOUR || !breakBeamState_FIVE)
+    {
+        Serial.println("");
+        Serial.println("===================");
+        Serial.print("breakBeamState_ZERO: ");
+        Serial.println(breakBeamState_ZERO);
+        Serial.print("breakBeamState_ONE: ");
+        Serial.println(breakBeamState_ONE);
+        Serial.print("breakBeamState_TWO: ");
+        Serial.println(breakBeamState_TWO);
+        Serial.print("breakBeamState_THREE: ");
+        Serial.println(breakBeamState_THREE);
+        Serial.print("breakBeamState_FOUR: ");
+        Serial.println(breakBeamState_FOUR);
+        Serial.print("breakBeamState_FIVE: ");
+        Serial.println(breakBeamState_FIVE);
+        Serial.println("===================");
+        Serial.println("");
+    }
+
     if (!breakBeamState_ZERO)
     {
-        Serial.println("Resetting state");
-        resetState();
+        breakBeamState_ZERO = true;
+        Serial.println("Break Beam 0");
+        resetGameplay(); //! I don't think we need this now that we're resetting in the conditionals
         messagePegs(START);
         // playReady();
     }
 
     if (!breakBeamState_ONE)
     {
+        breakBeamState_ONE = true;
+        Serial.println("Break beam 1");
         activeIndex = 0;
+        messagePegs(GATE_1);
     }
     else if (!breakBeamState_TWO)
     {
+        breakBeamState_TWO = true;
+        Serial.println("Break beam 2");
         activeIndex = 1;
+        messagePegs(GATE_2);
     }
     else if (!breakBeamState_THREE)
     {
+        breakBeamState_THREE = true;
+        Serial.println("Break beam 3");
         activeIndex = 2;
+        messagePegs(GATE_3);
     }
     else if (!breakBeamState_FOUR)
     {
+        breakBeamState_FOUR = true;
+        Serial.println("Break beam 4");
         activeIndex = 3;
+        messagePegs(GATE_4);
     }
     else if (!breakBeamState_FIVE)
     {
+        breakBeamState_FIVE = true;
+        Serial.println("Break beam 5");
         activeIndex = 4;
+        messagePegs(GATE_5);
     }
     else
     {
         // playIdle();
     }
 
-    if (!breakBeamState_ONE || !breakBeamState_TWO || !breakBeamState_THREE || !breakBeamState_FOUR || !breakBeamState_FIVE)
-    {
-        // playCompletion();
-    }
     if (!breakBeamState_ZERO || !breakBeamState_ONE || !breakBeamState_TWO || !breakBeamState_THREE || !breakBeamState_FOUR || !breakBeamState_FIVE)
     {
         Serial.println("===================");
+        Serial.print("breakBeamState_ZERO: ");
         Serial.println(breakBeamState_ZERO);
+        Serial.print("breakBeamState_ONE: ");
         Serial.println(breakBeamState_ONE);
+        Serial.print("breakBeamState_TWO: ");
         Serial.println(breakBeamState_TWO);
+        Serial.print("breakBeamState_THREE: ");
         Serial.println(breakBeamState_THREE);
+        Serial.print("breakBeamState_FOUR: ");
         Serial.println(breakBeamState_FOUR);
+        Serial.print("breakBeamState_FIVE: ");
         Serial.println(breakBeamState_FIVE);
         Serial.println("===================");
     }
-
     // Look for new cards
     if (!mfrc522.PICC_IsNewCardPresent())
     {
+        // Serial.println("can't see tag");
         return;
     }
 
     // Select one of the cards
     if (!mfrc522.PICC_ReadCardSerial())
     {
+        // Serial.println("can't read tag");
         return;
     }
+    Serial.println("see a tag");
 
     messagePegs(PROCESSING);
 
@@ -371,19 +419,20 @@ String captureUID()
         content.concat(String(mfrc522.uid.uidByte[i], HEX));
     }
     // Serial.println("Content:");
-    // Serial.println(content);
+    Serial.println(content);
     return content;
 }
 
-void resetState()
+void resetGameplay()
 {
-    Serial.println("resetting state");
+    Serial.println("resetting gameplay");
     matrix.clear();
     matrix.writeDisplay();
 
-    resetBreakBeamState();
+    // resetBreakBeamState();
 }
 
+// ! this may not be needed anymore
 void resetBreakBeamState()
 {
     Serial.println("resetting break beam statestate");

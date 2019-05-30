@@ -1,22 +1,41 @@
 #include <Adafruit_NeoPixel.h>
 #include <Wire.h>
+#include "pitches.h"
 
-#define PIN 1
+#define PEGS_PIN 4
+#define GATES_PIN 1
+#define speaker 2
 
 // #define TOTAL_LEDS 8
-#define TOTAL_LEDS 22
+#define PEGS_TOTAL_LEDS 22
+#define GATES_TOTAL_LEDS 15
 
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(TOTAL_LEDS, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pegs = Adafruit_NeoPixel(PEGS_TOTAL_LEDS, PEGS_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel gates = Adafruit_NeoPixel(GATES_TOTAL_LEDS, GATES_PIN, NEO_GRB + NEO_KHZ800);
 
+// * this enum should prob be renamed to something more generic like `messagesFromLeader` or something
 enum gameStates
 {
     IDLE = 0,
     START,
     PROCESSING,
-    COMPLETE
+    COMPLETE,
+    GATE_1,
+    GATE_2,
+    GATE_3,
+    GATE_4,
+    GATE_5
 };
 
 int currentGameState = IDLE;
+
+// * states for controlling the gate led strips
+boolean gateState[] = {false, false, false, false, false};
+uint8_t gate5Leds[] = {0, 1, 2};
+uint8_t gate4Leds[] = {3, 4, 5};
+uint8_t gate3Leds[] = {6, 7, 8};
+uint8_t gate2Leds[] = {9, 10, 11};
+uint8_t gate1Leds[] = {12, 13, 14};
 
 void setup()
 {
@@ -30,19 +49,30 @@ void setup()
     Wire.begin(8);
     Wire.onReceive(handleMessageFromLeader);
 
-    // * Start up our led strip
-    strip.begin();
-    strip.show();
+    // * Start up our ledpegs
+    pegs.begin();
+    pegs.show();
+    gates.begin();
+    gates.show();
     ready();
 }
 
 void ready()
 {
-    colorWipe(strip.Color(255, 0, 0), 25);
-    colorWipe(strip.Color(0, 255, 0), 25);
-    colorWipe(strip.Color(0, 0, 255), 25);
-    colorWipe(strip.Color(0, 0, 0), 25);
+    colorWipe(pegs.Color(255, 0, 0), 25);
+    colorWipe(pegs.Color(0, 255, 0), 25);
+    colorWipe(pegs.Color(0, 0, 255), 25);
+    colorWipe(pegs.Color(0, 0, 0), 25);
     Serial.println("ready");
+}
+void colorWipe(uint32_t c, uint8_t wait)
+{
+    for (uint16_t i = 0; i < pegs.numPixels(); i++)
+    {
+        pegs.setPixelColor(i, c);
+        pegs.show();
+        delay(wait);
+    }
 }
 
 void handleMessageFromLeader(int message)
@@ -68,6 +98,35 @@ void handleMessageFromLeader(int message)
     {
         currentGameState = c;
     }
+
+    // * this is ultra crude code. After proving the logic out come back and optimize
+    if (c == GATE_1)
+    {
+        gateState[0] = true;
+    }
+    if (c == GATE_2)
+    {
+        gateState[1] = true;
+    }
+    if (c == GATE_3)
+    {
+        gateState[2] = true;
+    }
+    if (c == GATE_4)
+    {
+        gateState[3] = true;
+    }
+    if (c == GATE_5)
+    {
+        gateState[4] = true;
+    }
+    if (c == IDLE || c == START)
+    {
+        for (uint8_t i = 0; i < 5; i++)
+        {
+            gateState[i] = false;
+        }
+    }
 }
 
 unsigned long lightingInterval = 10;
@@ -84,79 +143,171 @@ void loop()
 {
     unsigned long currentMillis = millis();
 
+    handleGates();
+
     if (currentMillis - previousMillis > lightingInterval)
     {
 
         if (lightsOn && currentGameState == IDLE)
         {
-            strip.setPixelColor(led, 255, 0, 255);
+            pegs.setPixelColor(led, 255, 0, 255);
+            playIdle();
         }
         else if (lightsOn && currentGameState == START)
         {
-            strip.setPixelColor(led, 0, 255, 0);
+            pegs.setPixelColor(led, 0, 255, 0);
         }
         else if (lightsOn && currentGameState == PROCESSING)
         {
-            strip.setPixelColor(led, 0, 255, 255);
+            pegs.setPixelColor(led, 0, 255, 255);
         }
         else if (lightsOn && currentGameState == COMPLETE)
         {
-            strip.setPixelColor(led, 255, 255, 255);
+            pegs.setPixelColor(led, 255, 255, 255);
         }
         else
         {
-            strip.setPixelColor(led, 0, 0, 0);
+            pegs.setPixelColor(led, 0, 0, 0);
         }
 
-        strip.show();
+        pegs.show();
 
         led++;
         previousMillis = currentMillis;
 
-        if (led > TOTAL_LEDS)
+        if (led > PEGS_TOTAL_LEDS)
         {
             // lightsOn = !lightsOn;
             led = 0;
         }
     }
-
-    // if (!MainGameSerial.available())
-    // {
-    //     return;
-    // }
-
-    // currentGameState = MainGameSerial.read();
-
-    // // ! hmmm, this whole thing is going to need to be handled via a state machine
-    // // ! so we can stop the animations at any point
-
-    // switch (currentGameState)
-    // {
-    // case IDLE:
-    //     colorWipe(strip.Color(255, 0, 255), 10);
-    //     break;
-    // case START:
-    //     colorWipe(strip.Color(75, 0, 130), 10);
-    //     break;
-    // case PROCESSING:
-    //     colorWipe(strip.Color(0, 255, 255), 10);
-    //     break;
-    // case COMPLETE:
-    //     colorWipe(strip.Color(127, 255, 0), 10);
-    //     break;
-    // }
-    // strip.show();
-    // return;
 }
 
-// Fill the dots one after the other with a color
-void colorWipe(uint32_t c, uint8_t wait)
+// ! this is a really crude and repatitve way of handling the gate activation. After
+// ! proving it out come back and put the dynamic gate led array selection structure in place
+void handleGates()
 {
-    for (uint16_t i = 0; i < strip.numPixels(); i++)
+    if (gateState[0] == true)
     {
-        strip.setPixelColor(i, c);
-        strip.show();
-        delay(wait);
+        currentGameState = IDLE;
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate1Leds[i], gates.Color(0, 255, 255));
+        }
+    }
+    else
+    {
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate1Leds[i], gates.Color(0, 0, 0));
+        }
+    }
+    if (gateState[1] == true)
+    {
+        currentGameState = IDLE;
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate2Leds[i], gates.Color(0, 255, 255));
+        }
+    }
+    else
+    {
+
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate2Leds[i], gates.Color(0, 0, 0));
+        }
+    }
+    if (gateState[2] == true)
+    {
+        currentGameState = IDLE;
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate3Leds[i], gates.Color(0, 255, 255));
+        }
+    }
+    else
+    {
+
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate3Leds[i], gates.Color(0, 0, 0));
+        }
+    }
+    if (gateState[3] == true)
+    {
+        currentGameState = IDLE;
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate4Leds[i], gates.Color(0, 255, 255));
+        }
+    }
+    else
+    {
+
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate4Leds[i], gates.Color(0, 0, 0));
+        }
+    }
+    if (gateState[4] == true)
+    {
+        currentGameState = IDLE;
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate5Leds[i], gates.Color(0, 255, 255));
+        }
+    }
+    else
+    {
+
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(gate5Leds[i], gates.Color(0, 0, 0));
+        }
+    }
+    gates.show();
+}
+
+// | === sound effects ===
+int idleMelody[] = {
+    NOTE_C3, NOTE_D3, NOTE_E3, NOTE_F3, NOTE_G3};
+int idleDurations[] = {
+    4, 4, 4, 4, 2};
+
+// uint8_t totalNotes = 5; // ! later come back and replace this with a calc
+// * To get around the delay I'm going to try to replace the loop
+// * with an incrementing position variable
+// uint8_t idlePosition = 0;
+unsigned long tonePreviousMillis = 0;
+const long pauseBetweenNotes = 1;
+boolean outputTone = false;
+
+void playIdle()
+{
+    unsigned long currentMillis = millis();
+
+    if (outputTone)
+    {
+        // * Currently outputting a tone
+        // * Check to see if it's been long enough to turn off the tone
+        if (currentMillis - tonePreviousMillis >= idleDurations[0])
+        {
+            tonePreviousMillis = currentMillis;
+            noTone(speaker);
+            outputTone = false;
+        }
+        else
+        {
+            // * we're currntly in a pause
+            // * check to see if it's been long enough to turn on the next tone
+            if (currentMillis - tonePreviousMillis >= pauseBetweenNotes)
+            {
+                tonePreviousMillis = currentMillis;
+                tone(speaker, idleMelody[0]);
+                outputTone = true;
+            }
+        }
     }
 }
 
@@ -166,11 +317,11 @@ void rainbow(uint8_t wait)
 
     for (j = 0; j < 256; j++)
     {
-        for (i = 0; i < strip.numPixels(); i++)
+        for (i = 0; i < pegs.numPixels(); i++)
         {
-            strip.setPixelColor(i, Wheel((i + j) & 255));
+            pegs.setPixelColor(i, Wheel((i + j) & 255));
         }
-        strip.show();
+        pegs.show();
         delay(wait);
     }
 }
@@ -182,11 +333,11 @@ void rainbowCycle(uint8_t wait)
 
     for (j = 0; j < 256 * 5; j++)
     { // 5 cycles of all colors on wheel
-        for (i = 0; i < strip.numPixels(); i++)
+        for (i = 0; i < pegs.numPixels(); i++)
         {
-            strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+            pegs.setPixelColor(i, Wheel(((i * 256 / pegs.numPixels()) + j) & 255));
         }
-        strip.show();
+        pegs.show();
         delay(wait);
     }
 }
@@ -198,17 +349,17 @@ void theaterChase(uint32_t c, uint8_t wait)
     { //do 10 cycles of chasing
         for (int q = 0; q < 3; q++)
         {
-            for (uint16_t i = 0; i < strip.numPixels(); i = i + 3)
+            for (uint16_t i = 0; i < pegs.numPixels(); i = i + 3)
             {
-                strip.setPixelColor(i + q, c); //turn every third pixel on
+                pegs.setPixelColor(i + q, c); //turn every third pixel on
             }
-            strip.show();
+            pegs.show();
 
             delay(wait);
 
-            for (uint16_t i = 0; i < strip.numPixels(); i = i + 3)
+            for (uint16_t i = 0; i < pegs.numPixels(); i = i + 3)
             {
-                strip.setPixelColor(i + q, 0); //turn every third pixel off
+                pegs.setPixelColor(i + q, 0); //turn every third pixel off
             }
         }
     }
@@ -221,17 +372,17 @@ void theaterChaseRainbow(uint8_t wait)
     { // cycle all 256 colors in the wheel
         for (int q = 0; q < 3; q++)
         {
-            for (uint16_t i = 0; i < strip.numPixels(); i = i + 3)
+            for (uint16_t i = 0; i < pegs.numPixels(); i = i + 3)
             {
-                strip.setPixelColor(i + q, Wheel((i + j) % 255)); //turn every third pixel on
+                pegs.setPixelColor(i + q, Wheel((i + j) % 255)); //turn every third pixel on
             }
-            strip.show();
+            pegs.show();
 
             delay(wait);
 
-            for (uint16_t i = 0; i < strip.numPixels(); i = i + 3)
+            for (uint16_t i = 0; i < pegs.numPixels(); i = i + 3)
             {
-                strip.setPixelColor(i + q, 0); //turn every third pixel off
+                pegs.setPixelColor(i + q, 0); //turn every third pixel off
             }
         }
     }
@@ -244,13 +395,13 @@ uint32_t Wheel(byte WheelPos)
     WheelPos = 255 - WheelPos;
     if (WheelPos < 85)
     {
-        return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+        return pegs.Color(255 - WheelPos * 3, 0, WheelPos * 3);
     }
     if (WheelPos < 170)
     {
         WheelPos -= 85;
-        return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+        return pegs.Color(0, WheelPos * 3, 255 - WheelPos * 3);
     }
     WheelPos -= 170;
-    return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+    return pegs.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
