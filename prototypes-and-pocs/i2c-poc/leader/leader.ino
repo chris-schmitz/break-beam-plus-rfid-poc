@@ -16,5 +16,5 @@ void loop()
     Wire.endTransmission();
 
     x++;
-    delay(500);
+    delay(100);
 }
