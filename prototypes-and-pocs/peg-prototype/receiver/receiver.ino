@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include "pitches.h"
 
-#define PEGS_PIN 4
+#define PEGS_PIN 2
 #define GATES_PIN 1
 #define speaker 2
 
@@ -41,13 +41,10 @@ void setup()
 {
     // * Start up our serial ports
     Serial.begin(9600);
+    Serial1.begin(9600);
     // * Leaving this in here b/c it's nice to be able to pause for troubleshooting purposes
     // while (!Serial)
     //     ;
-
-    // * Starting up i2c
-    Wire.begin(8);
-    Wire.onReceive(handleMessageFromLeader);
 
     // * Start up our ledpegs
     pegs.begin();
@@ -75,22 +72,18 @@ void colorWipe(uint32_t c, uint8_t wait)
     }
 }
 
-void handleMessageFromLeader(int message)
+void checkForMessagesFromLeader()
 {
-    Serial.println("Got message from leader");
-    Serial.print("bytes: ");
-    Serial.println(Wire.available());
-
-    if (Wire.available() == 0)
+    if (!Serial1.available())
     {
         return;
     }
 
+    Serial.println("Got message from leader");
+    Serial.print("bytes: ");
+
     int c;
-    while (Wire.available())
-    {
-        c = Wire.read();
-    }
+    c = Serial1.read();
     Serial.println(c);
     // * Check to see if the value we got is a valid
     // * game state. if not we ignore it.
@@ -143,6 +136,7 @@ void loop()
 {
     unsigned long currentMillis = millis();
 
+    checkForMessagesFromLeader();
     handleGates();
 
     if (currentMillis - previousMillis > lightingInterval)
