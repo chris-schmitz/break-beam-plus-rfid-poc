@@ -37,8 +37,9 @@ enum gameStates
     GATE_5
 };
 
-String cupcake = " 04 aa cb 4a e6 4c 80";
+String cupcake = " 04 c8 cd 4a e6 4c 80";
 String diamond = " 04 a5 e1 4a e6 4c 80";
+String cloud = " 04 c0 cd 4a e6 4c 80";
 String crown = " 04 d1 cd 4a e6 4c 80";
 
 String bulbasaur = " 04 60 d0 4a e6 4c 81";
@@ -62,6 +63,46 @@ int completionDurations[] = {
     4, 4, 2};
 
 static const uint8_t PROGMEM
+    spinner_horizontal[] =
+        {
+            B00000000,
+            B00000000,
+            B00000000,
+            B11111111,
+            B11111111,
+            B00000000,
+            B00000000,
+            B00000000},
+    spinner_vertical[] =
+        {
+            B00011000,
+            B00011000,
+            B00011000,
+            B00011000,
+            B00011000,
+            B00011000,
+            B00011000,
+            B00011000},
+    spinner_forwardSlash[] =
+        {
+            B00000001,
+            B00000010,
+            B00000100,
+            B00001000,
+            B00010000,
+            B00100000,
+            B01000000,
+            B10000000},
+    spinner_backSlash[] =
+        {
+            B10000000,
+            B01000000,
+            B00100000,
+            B00010000,
+            B00001000,
+            B00000100,
+            B00000010,
+            B00000001},
     all_bmp[] =
         {
             B11111111,
@@ -130,6 +171,8 @@ Adafruit_BicolorMatrix matrix = Adafruit_BicolorMatrix();
 
 String content;
 
+volatile bool spinnerOn = false;
+
 volatile int breakBeamState_ZERO = 1;
 volatile int breakBeamState_ONE = 1;
 volatile int breakBeamState_TWO = 1;
@@ -139,12 +182,18 @@ volatile int breakBeamState_FIVE = 1;
 
 void setup()
 {
-    Wire.begin();
+    Serial.begin(9600);
+    // Serial.begin(115200);
+    Serial1.begin(9600); // * for messaging to second controller
+    // while (!Serial)
+    //     ;
+    Serial.println("Serial ports open");
 
     messagePegs(IDLE);
 
     resetBreakBeamState();
 
+    Wire.begin();
     matrix.begin(0x70);
     matrix.setRotation(3);
 
@@ -152,10 +201,8 @@ void setup()
     matrix.drawBitmap(0, 0, all_bmp, 8, 8, LED_GREEN);
     matrix.writeDisplay();
     delay(500);
+    runSpinner(LED_GREEN);
 
-    Serial.begin(115200);
-    // while (!Serial)
-    //     ;
     Serial.println("Starting up");
     SPI.begin();
     mfrc522.PCD_Init();
@@ -252,16 +299,86 @@ void messagePegs(gameStates state)
 {
     Serial.print("Messaging pegs with enum:");
     Serial.println(state);
+    Serial1.write(state);
+}
 
-    Wire.beginTransmission(PEG_CONTROLLER_ID);
-    Wire.write(state);
-    Wire.endTransmission();
+void runSpinner(int color)
+{
+    Serial.println("Running spinner");
+    spinnerOn = true;
+    matrix.clear();
+    matrix.writeDisplay();
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_vertical, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_forwardSlash, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_horizontal, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_backSlash, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_vertical, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_forwardSlash, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_horizontal, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_backSlash, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_vertical, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_forwardSlash, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_horizontal, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.drawBitmap(0, 0, spinner_backSlash, 8, 8, color);
+    matrix.writeDisplay();
+    delay(100);
+
+    matrix.clear();
+    matrix.writeDisplay();
+    spinnerOn = false;
 }
 
 int activeIndex;
 
 void loop()
 {
+
     if (!breakBeamState_ZERO || !breakBeamState_ONE || !breakBeamState_TWO || !breakBeamState_THREE || !breakBeamState_FOUR || !breakBeamState_FIVE)
     {
         Serial.println("");
@@ -371,34 +488,36 @@ void loop()
     Serial.println(uid);
 
     matrix.clear();
-    if (uid == diamond)
-    // if (uid == charmander)
+    if (uid == cloud)
     {
         Serial.println("Drawing red!");
         matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_RED);
+        runSpinner(LED_RED);
+        runSpinner(LED_RED);
+        runSpinner(LED_RED);
     }
     else if (uid == cupcake)
-    // else if (uid == bulbasaur)
     {
         Serial.println("Drawing green!");
         matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_GREEN);
+        runSpinner(LED_GREEN);
+        runSpinner(LED_GREEN);
+        runSpinner(LED_GREEN);
     }
     else if (uid == crown)
-    // else if (uid == pikachu)
     {
         Serial.println("Drawing yellow!");
         matrix.drawBitmap(0, 0, activeSlot[activeIndex], 8, 8, LED_YELLOW);
+        runSpinner(LED_YELLOW);
+        runSpinner(LED_YELLOW);
+        runSpinner(LED_YELLOW);
     }
     matrix.writeDisplay();
 
-    // ! adding this artificial delay to represent the time between Reading
-    // ! the RFID tag and the receipt printer finishing its print.
-    delay(3000);
     messagePegs(COMPLETE);
+    // * giving time for a complete status before switching back to idle
+    delay(1000);
 
-    // ! adding this artificial delay to represent the time between Reading
-    // ! the RFID tag and the receipt printer finishing its print.
-    delay(3000);
     messagePegs(IDLE);
 
     // * leaving this in during dev for easy troubleshooting
@@ -411,15 +530,11 @@ String captureUID()
     content = "";
     for (byte i = 0; i < mfrc522.uid.size; i++)
     {
-        // Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
-        // Serial.print(mfrc522.uid.uidByte[i], HEX);
-        // Serial.println();
-
         content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " "));
         content.concat(String(mfrc522.uid.uidByte[i], HEX));
     }
-    // Serial.println("Content:");
-    Serial.println(content);
+    // * leaving in for trouble shooting purposes
+    // Serial.println(content);
     return content;
 }
 
@@ -428,8 +543,6 @@ void resetGameplay()
     Serial.println("resetting gameplay");
     matrix.clear();
     matrix.writeDisplay();
-
-    // resetBreakBeamState();
 }
 
 // ! this may not be needed anymore
