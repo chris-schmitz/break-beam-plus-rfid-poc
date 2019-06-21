@@ -7,8 +7,10 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
-#include "pitches.h"
 #include <Wire.h>
+
+#include "RFIDs.h"
+#include "Bitmaps.h"
 
 #define SS_PIN 13
 #define RST_PIN 12
@@ -37,133 +39,6 @@ enum gameStates
     GATE_5
 };
 
-String cupcake = " 04 c8 cd 4a e6 4c 80";
-String diamond = " 04 a5 e1 4a e6 4c 80";
-String cloud = " 04 c0 cd 4a e6 4c 80";
-String crown = " 04 d1 cd 4a e6 4c 80";
-
-String bulbasaur = " 04 60 d0 4a e6 4c 81";
-String charmander = " 04 78 d2 4a e6 4c 81";
-String squirtle = " 04 59 d0 4a e6 4c 81";
-String pikachu = " 04 60 d1 4a e6 4c 81";
-
-int idleMelody[] = {
-    NOTE_C3, NOTE_D3, NOTE_E3, NOTE_F3, NOTE_G3};
-int idleDurations[] = {
-    4, 4, 4, 4, 1};
-int readyMelody[] = {
-    NOTE_C3, NOTE_G3};
-
-int completionMelody[] = {
-    NOTE_G3, NOTE_C3, NOTE_G3};
-
-int readyDurations[] = {
-    4, 4};
-int completionDurations[] = {
-    4, 4, 2};
-
-static const uint8_t PROGMEM
-    spinner_horizontal[] =
-        {
-            B00000000,
-            B00000000,
-            B00000000,
-            B11111111,
-            B11111111,
-            B00000000,
-            B00000000,
-            B00000000},
-    spinner_vertical[] =
-        {
-            B00011000,
-            B00011000,
-            B00011000,
-            B00011000,
-            B00011000,
-            B00011000,
-            B00011000,
-            B00011000},
-    spinner_forwardSlash[] =
-        {
-            B00000001,
-            B00000010,
-            B00000100,
-            B00001000,
-            B00010000,
-            B00100000,
-            B01000000,
-            B10000000},
-    spinner_backSlash[] =
-        {
-            B10000000,
-            B01000000,
-            B00100000,
-            B00010000,
-            B00001000,
-            B00000100,
-            B00000010,
-            B00000001},
-    all_bmp[] =
-        {
-            B11111111,
-            B11111111,
-            B11111111,
-            B11111111,
-            B11111111,
-            B11111111,
-            B11111111,
-            B11111111},
-    slot_1_bmp[] =
-        {
-            B00000000,
-            B00011000,
-            B00011000,
-            B00111000,
-            B00011000,
-            B00011000,
-            B00011000,
-            B01111110},
-    slot_2_bmp[] =
-        {
-            B00000000,
-            B00111100,
-            B01100110,
-            B00000110,
-            B00001100,
-            B00110000,
-            B01100000,
-            B01111110},
-    slot_3_bmp[] =
-        {
-            B00000000,
-            B00111100,
-            B01100110,
-            B00000110,
-            B00011100,
-            B00000110,
-            B01100110,
-            B00111100},
-    slot_4_bmp[] =
-        {
-            B00000000,
-            B00001100,
-            B00011100,
-            B00101100,
-            B01001100,
-            B01111110,
-            B00001100,
-            B00001100},
-    slot_5_bmp[] =
-        {
-            B00000000,
-            B01111110,
-            B01100000,
-            B01111100,
-            B00000110,
-            B00000110,
-            B01100110,
-            B00111100};
-
 const uint8_t *activeSlot[] PROGMEM = {slot_1_bmp, slot_2_bmp, slot_3_bmp, slot_4_bmp, slot_5_bmp};
 
 MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance
@@ -185,23 +60,11 @@ void setup()
     Serial.begin(9600);
     // Serial.begin(115200);
     Serial1.begin(9600); // * for messaging to second controller
-    // while (!Serial)
-    //     ;
+    while (!Serial)
+        ;
     Serial.println("Serial ports open");
 
-    messagePegs(IDLE);
-
     resetBreakBeamState();
-
-    Wire.begin();
-    matrix.begin(0x70);
-    matrix.setRotation(3);
-
-    matrix.clear();
-    matrix.drawBitmap(0, 0, all_bmp, 8, 8, LED_GREEN);
-    matrix.writeDisplay();
-    delay(500);
-    runSpinner(LED_GREEN);
 
     Serial.println("Starting up");
     SPI.begin();
@@ -232,67 +95,20 @@ void setup()
     digitalWrite(break_beam_FIVE, HIGH);
     attachInterrupt(break_beam_FIVE, setBreakbeamState, FALLING);
 
+    Wire.begin();
+    matrix.begin(0x70);
+    matrix.setRotation(3);
+
     Serial.println("Setup complete");
-    // playReady();
+    ready();
+
     Serial.println("Exiting setup function");
 }
 
-void playReady()
+void ready()
 {
-    Serial.println("Playing ready tone");
-    for (int thisNote = 0; thisNote < 8; thisNote++)
-    {
-
-        // to calculate the note duration, take one second divided by the note type.
-        //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-        int noteDuration = 1000 / readyDurations[thisNote];
-        tone(speaker, readyMelody[thisNote], noteDuration);
-
-        // to distinguish the notes, set a minimum time between them.
-        // the note's duration + 30% seems to work well:
-        int pauseBetweenNotes = noteDuration * 1.30;
-        delay(pauseBetweenNotes);
-        // stop the tone playing:
-        noTone(speaker);
-    }
-}
-void playIdle()
-{
-    Serial.println("Playing ready tone");
-    for (int thisNote = 0; thisNote < 8; thisNote++)
-    {
-
-        // to calculate the note duration, take one second divided by the note type.
-        //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-        int noteDuration = 1000 / idleDurations[thisNote];
-        tone(speaker, idleMelody[thisNote], noteDuration);
-
-        // to distinguish the notes, set a minimum time between them.
-        // the note's duration + 30% seems to work well:
-        int pauseBetweenNotes = noteDuration * 1.30;
-        delay(pauseBetweenNotes);
-        // stop the tone playing:
-        noTone(speaker);
-    }
-}
-void playCompletion()
-{
-    Serial.println("Playing ready tone");
-    for (int thisNote = 0; thisNote < 8; thisNote++)
-    {
-
-        // to calculate the note duration, take one second divided by the note type.
-        //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-        int noteDuration = 1000 / completionDurations[thisNote];
-        tone(speaker, completionMelody[thisNote], noteDuration);
-
-        // to distinguish the notes, set a minimum time between them.
-        // the note's duration + 30% seems to work well:
-        int pauseBetweenNotes = noteDuration * 1.30;
-        delay(pauseBetweenNotes);
-        // stop the tone playing:
-        noTone(speaker);
-    }
+    runSpinner(LED_GREEN);
+    messagePegs(IDLE);
 }
 
 void messagePegs(gameStates state)
@@ -516,7 +332,7 @@ void loop()
 
     messagePegs(COMPLETE);
     // * giving time for a complete status before switching back to idle
-    delay(1000);
+    delay(3000);
 
     messagePegs(IDLE);
 
