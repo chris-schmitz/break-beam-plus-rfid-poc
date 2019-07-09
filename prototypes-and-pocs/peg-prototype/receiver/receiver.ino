@@ -16,7 +16,7 @@ TunePlayer tunes = TunePlayer(SPEAKER);
 
 // TODO: UGH THIS IS DRIVING ME NUTS!!!!
 // | RENAME MELODY TO TUNE EVERWHERE WHERE WE'RE NOT TALKING SPECIFICALLY ABOUT A MELODY!!
-MELODY melodyToPlay;
+TUNES tuneToPlay;
 
 // * this enum should prob be renamed to something more generic like `messagesFromLeader` or something
 enum gameStates
@@ -50,6 +50,8 @@ uint8_t gate2Leds[] = {9, 10, 11};
 uint8_t gate1Leds[] = {12, 13, 14};
 
 uint32_t COLOR_OFF = gates.Color(0, 0, 0);
+uint32_t COLOR_GREEN = gates.Color(0, 255, 0);
+uint32_t COLOR_PURPLE = gates.Color(128, 0, 255);
 
 void setup()
 {
@@ -72,22 +74,25 @@ void ready()
 {
     Serial.println("ready");
 
-    colorWipe(pegs.Color(255, 0, 0), 25);
-    colorWipe(pegs.Color(0, 255, 0), 25);
-    colorWipe(pegs.Color(0, 0, 255), 25);
-    colorWipe(pegs.Color(0, 0, 0), 25);
+    colorWipe(pegs.Color(255, 0, 0), 25, pegs);
+    colorWipe(pegs.Color(0, 255, 0), 25, pegs);
+    colorWipe(pegs.Color(0, 0, 255), 25, pegs);
 
-    colorWipe(gates.Color(0, 0, 255), 25);
-    colorWipe(gates.Color(0, 0, 0), 25);
+    colorWipe(pegs.Color(255, 0, 0), 25, gates);
+    colorWipe(pegs.Color(0, 255, 0), 25, gates);
+    colorWipe(pegs.Color(0, 0, 255), 25, gates);
 
-    tunes.playMelody(MELODY_READY);
+    colorWipe(COLOR_OFF, 5, pegs);
+    colorWipe(COLOR_OFF, 5, gates);
+
+    tunes.playMelody(TUNE_READY);
 }
-void colorWipe(uint32_t c, uint8_t wait)
+void colorWipe(uint32_t c, uint8_t wait, Adafruit_NeoPixel &strip)
 {
-    for (uint16_t i = 0; i < pegs.numPixels(); i++)
+    for (uint16_t i = 0; i < strip.numPixels(); i++)
     {
-        pegs.setPixelColor(i, c);
-        pegs.show();
+        strip.setPixelColor(i, c);
+        strip.show();
         delay(wait);
     }
 }
@@ -137,24 +142,27 @@ void checkForMessagesFromLeader()
         activeGate = 5;
         break;
     case IDLE:
-        melodyToPlay = MELODY_IDLE;
+        tuneToPlay = TUNE_IDLE;
         activeGate = 0;
         break;
     case START:
-        melodyToPlay = MELODY_READY;
+        tuneToPlay = TUNE_READY;
         activeGate = 0;
         break;
     case PROCESSING:
-        melodyToPlay = MELODY_PROCESSING;
+        tuneToPlay = TUNE_PROCESSING;
         break;
     case COMPLETE:
-        melodyToPlay = MELODY_COMPLETE;
+        tuneToPlay = TUNE_COMPLETE;
         break;
     }
 }
 
 unsigned long lightingInterval = 10;
 long previousMillis = 0;
+
+unsigned long checkForIdleInterval = 10000;
+long checkForIdlePreviousMillis = 0;
 
 uint8_t r = 0;
 uint8_t g = 0;
@@ -169,7 +177,7 @@ void loop()
 
     checkForMessagesFromLeader();
 
-    if (tunes.currentMelody == melodyToPlay)
+    if (tunes.currentMelody == tuneToPlay)
     {
         tunes.playMelodyWithoutDelay();
     }
@@ -177,8 +185,24 @@ void loop()
     {
         tunes.stopPlaying();
         tunes.reset();
-        tunes.setActiveMelody(melodyToPlay);
+        tunes.setActiveMelody(tuneToPlay);
         tunes.playMelodyWithoutDelay();
+    }
+
+    // * if we're still idling, play the idle tune after a bit
+    if (currentMillis - checkForIdlePreviousMillis > checkForIdleInterval)
+    {
+        if (!tunes.playingMelody && tunes.currentMelody == TUNE_IDLE)
+        {
+            tunes.reset();
+            tunes.setActiveMelody(TUNE_IDLE);
+            tunes.playMelodyWithoutDelay();
+        }
+    }
+
+    if (currentGameState == COMPLETE)
+    {
+        activeGate = 0;
     }
 
     if (previouslyActiveGate != activeGate)
@@ -188,43 +212,85 @@ void loop()
 
     if (currentMillis - previousMillis > lightingInterval)
     {
+        handlePegs();
+        previousMillis = currentMillis;
+    }
+}
 
-        if (lightsOn && currentGameState == IDLE)
+uint8_t idleColor = 0;
+boolean successToggle = true;
+boolean pegsFlooded = false;
+
+void handlePegs()
+{
+    // * now that we're getting a bit more fancy as far as how we handle peg lighting
+    // * state it may be worth abstracting some of this logic or possibly classing the
+    // * peg handler up.
+    if (lightsOn && currentGameState == IDLE)
+    {
+        lightingInterval = 10;
+        pegsFlooded = false;
+        pegs.setPixelColor(led, Wheel((led + idleColor) & 255));
+        idleColor++;
+    }
+    else if (lightsOn && currentGameState == START)
+    {
+        if (!pegsFlooded)
         {
-            pegs.setPixelColor(led, 255, 0, 255);
+            floodPegs(COLOR_GREEN);
         }
-        else if (lightsOn && currentGameState == START)
-        {
-            pegs.setPixelColor(led, 0, 255, 0);
-        }
-        else if (lightsOn && currentGameState == PROCESSING)
-        {
-            pegs.setPixelColor(led, 0, 255, 255);
-        }
-        else if (lightsOn && currentGameState == COMPLETE)
+        lightingInterval = 80;
+        pegs.setPixelColor(PEGS_TOTAL_LEDS - led - 3, COLOR_PURPLE);
+        pegs.setPixelColor(PEGS_TOTAL_LEDS - led - 2, COLOR_PURPLE);
+        pegs.setPixelColor(PEGS_TOTAL_LEDS - led - 1, COLOR_PURPLE);
+        pegs.setPixelColor(PEGS_TOTAL_LEDS - led, COLOR_GREEN);
+    }
+    else if (lightsOn && currentGameState == PROCESSING)
+    {
+        lightingInterval = 10;
+        pegsFlooded = false;
+        pegs.setPixelColor(led, 0, 255, 255);
+    }
+    else if (lightsOn && currentGameState == COMPLETE)
+    {
+        lightingInterval = 5;
+        pegsFlooded = false;
+        if (successToggle)
         {
             pegs.setPixelColor(led, 255, 255, 255);
         }
         else
         {
-            pegs.setPixelColor(led, 0, 0, 0);
+            pegs.setPixelColor(led, 255, 255, 0);
         }
+        successToggle = !successToggle;
+    }
+    else
+    {
+        //        pegs.setPixelColor(led, 0, 0, 0);
+    }
 
-        pegs.show();
+    pegs.show();
 
-        led++;
-        previousMillis = currentMillis;
+    led++;
 
-        if (led > PEGS_TOTAL_LEDS)
-        {
-            // lightsOn = !lightsOn;
-            led = 0;
-        }
+    if (led > PEGS_TOTAL_LEDS)
+    {
+        //        lightsOn = !lightsOn;
+        led = 0;
     }
 }
 
-// ! this is a really crude and repatitve way of handling the gate activation. After
-// ! proving it out come back and put the dynamic gate led array selection structure in place
+void floodPegs(uint32_t color)
+{
+    for (uint8_t i = 0; i < PEGS_TOTAL_LEDS; i++)
+    {
+        pegs.setPixelColor(i, color);
+    }
+    pegs.show();
+    pegsFlooded = true;
+}
+
 void handleGates()
 {
     // * We only need one gate on at a time so start with all off
@@ -235,6 +301,8 @@ void handleGates()
 
     switch (activeGate)
     {
+    // * Note that we're intentionally not setting a state for activeGate == 0
+    // * because if we get active gate 0 we want to leave all gates off.
     case 1:
         activeGateLedArray = gate1Leds;
         break;
@@ -252,9 +320,13 @@ void handleGates()
         break;
     }
 
-    for (uint8_t i = 0; i < 3; i++)
+    if (currentGameState != COMPLETE)
     {
-        gates.setPixelColor(activeGateLedArray[i], gates.Color(0, 255, 255));
+        Serial.println("Not complete");
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            gates.setPixelColor(activeGateLedArray[i], gates.Color(0, 255, 255));
+        }
     }
     gates.show();
     previouslyActiveGate = activeGate;

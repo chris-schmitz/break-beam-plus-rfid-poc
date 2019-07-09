@@ -3,13 +3,13 @@
 #include "pitches.h"
 #include "Arduino.h"
 
-enum MELODY
+enum TUNES
 {
-    MELODY_SHAVE_AND_A_HAIRCUT = 0,
-    MELODY_IDLE,
-    MELODY_READY,
-    MELODY_PROCESSING,
-    MELODY_COMPLETE,
+    TUNE_SHAVE_AND_A_HAIRCUT = 0,
+    TUNE_IDLE,
+    TUNE_READY,
+    TUNE_PROCESSING,
+    TUNE_COMPLETE,
 };
 
 class TunePlayer
@@ -60,15 +60,15 @@ public:
     TunePlayer(uint8_t speakerPin);
 
     // * Play a tune with delays
-    void playMelody(MELODY name);
+    void playMelody(TUNES name);
 
     // * Tools for playing a tune without delays
-    void setActiveMelody(MELODY name);
+    void setActiveMelody(TUNES name);
     void playMelodyWithoutDelay();
     void stopPlaying();
     void reset();
 
     boolean playingMelody = false;
-    MELODY currentMelody = MELODY_READY; // * consider a rename
+    TUNES currentMelody = TUNE_READY; // * consider a rename
 };
 #endif

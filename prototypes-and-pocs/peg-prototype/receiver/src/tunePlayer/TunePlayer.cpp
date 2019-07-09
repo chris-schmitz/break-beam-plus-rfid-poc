@@ -45,7 +45,7 @@ int TunePlayer::durations_IDLE[] = {
  * * Params:
  * * MELODY name The MELODY enum value
  */
-void TunePlayer::playMelody(MELODY name)
+void TunePlayer::playMelody(TUNES name)
 {
     setActiveMelody(name);
     _playMelody();
@@ -163,7 +163,7 @@ void TunePlayer::_playMelodyWithoutDelay()
     _nextChange = _currentMillis + millisTillNextChange;
 }
 
-void TunePlayer::setActiveMelody(MELODY name)
+void TunePlayer::setActiveMelody(TUNES name)
 {
     // ? PASTE ME: is this the right spot for this??
     // * PASTE ME: naming wise I don't think it is, but logic wise it might be
@@ -173,27 +173,27 @@ void TunePlayer::setActiveMelody(MELODY name)
     currentMelody = name;
     switch (name)
     {
-    case MELODY_SHAVE_AND_A_HAIRCUT:
+    case TUNE_SHAVE_AND_A_HAIRCUT:
         activeLength = length_shaveAndAHairCut;
         activeMelody = melody_shaveAndAHairCut;
         activeDurations = durations_shaveAndAHairCut;
         break;
-    case MELODY_READY:
+    case TUNE_READY:
         activeLength = length_READY;
         activeMelody = melody_READY;
         activeDurations = durations_READY;
         break;
-    case MELODY_PROCESSING:
+    case TUNE_PROCESSING:
         activeLength = length_PROCESSING;
         activeMelody = melody_PROCESSING;
         activeDurations = durations_PROCESSING;
         break;
-    case MELODY_COMPLETE:
+    case TUNE_COMPLETE:
         activeLength = length_COMPLETE;
         activeMelody = melody_COMPLETE;
         activeDurations = durations_COMPLETE;
         break;
-    case MELODY_IDLE:
+    case TUNE_IDLE:
         activeLength = length_IDLE;
         activeMelody = melody_IDLE;
         activeDurations = durations_IDLE;
