@@ -8,6 +8,12 @@ This is the main game prototype where I'm working out the MVP for what will beco
 ![exploded view](readme_attachments/construction.jpg)
 ![exploded view](readme_attachments/gates.jpg)
 
+## Prototype circuit layout
+
+I don't know how to draw decent circuit diagrams yet so a pic will have to do.
+
+![circuit layout](readme_attachments/circuit-layout.jpg)
+
 ## MVP
 
 The mvp for this prototype is:
